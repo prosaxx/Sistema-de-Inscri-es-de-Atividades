@@ -164,4 +164,6 @@ Crie uma branch para sua feature
 Commit suas mudanças
 Push para a branch
 Abra um Pull Request
+
+Ambiente Docker não foi configurado.
 Desenvolvido para o Sistema de Inscrições SESC 🏢
