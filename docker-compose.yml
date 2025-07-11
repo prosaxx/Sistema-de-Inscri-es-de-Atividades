@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # SQL Server Database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sesc-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - sesc-network
+    restart: unless-stopped
+    healthcheck:
+      test: [
+        "CMD-SHELL", 
+        "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' || exit 1"
+      ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Backend NestJS
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sesc-backend
+    environment:
+      - DATABASE_URL=sqlserver://sqlserver:1433;database=sesc_db;user=sa;password=YourStrong@Passw0rd;encrypt=true;trustServerCertificate=true
+      - PORT=3000
+      - NODE_ENV=production
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - FIREBASE_PROJECT_ID=your-project-id
+      - FIREBASE_PRIVATE_KEY=your-private-key
+      - FIREBASE_CLIENT_EMAIL=your-client-email
+    ports:
+      - "3000:3000"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - sesc-network
+    restart: unless-stopped
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    command: >
+      sh -c "
+        echo 'Aguardando SQL Server...' &&
+        sleep 30 &&
+        echo 'Executando migrations...' &&
+        npx prisma migrate deploy &&
+        echo 'Executando seed...' &&
+        npm run prisma:seed &&
+        echo 'Iniciando aplicação...' &&
+        npm run start:prod
+      "
+
+  # Frontend React (opcional)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sesc-frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:3000
+      - PORT=4200
+    ports:
+      - "4200:4200"
+    depends_on:
+      - backend
+    networks:
+      - sesc-network
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+    driver: local
+
+networks:
+  sesc-network:
+    driver: bridge

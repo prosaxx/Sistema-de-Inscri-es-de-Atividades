@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// Para SQL Server, usamos String ao invés de enum
+// Os valores serão validados na aplicação
+
+// Modelo Admin
+model Admin {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senha     String
+  status    String   @default("ATIVO") // ATIVO, INATIVO
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
+// Modelo Cliente
+model Cliente {
+  id              String   @id @default(cuid())
+  nome            String
+  email           String   @unique
+  telefone        String
+  cpf             String   @unique
+  dataNascimento  DateTime
+  cep             String
+  endereco        String
+  numero          String
+  complemento     String?
+  bairro          String
+  cidade          String
+  estado          String
+  status          String   @default("ATIVO") // ATIVO, INATIVO
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relacionamentos
+  responsaveis    Responsavel[]
+  inscricoes      Inscricao[]
+  avaliacoes      Avaliacao[]
+
+  @@map("clientes")
+}
+
+// Modelo Responsável
+model Responsavel {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String
+  telefone  String
+  cpf       String   @unique
+  clienteId String
+  status    String   @default("ATIVO") // ATIVO, INATIVO
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  cliente   Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@map("responsaveis")
+}
+
+// Modelo Atividade
+model Atividade {
+  id                String   @id @default(cuid())
+  nome              String
+  descricao         String
+  tipo              String   // ESPORTE, CULTURA, EDUCACAO, LAZER
+  dataInicio        DateTime
+  dataFim           DateTime
+  horarioInicio     String
+  horarioFim        String
+  vagas             Int
+  vagasDisponiveis  Int
+  idadeMinima       Int?
+  idadeMaxima       Int?
+  valor             Float    @default(0)
+  local             String
+  instrutor         String?
+  observacoes       String?
+  status            String   @default("ATIVO") // ATIVO, INATIVO
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relacionamentos
+  inscricoes        Inscricao[]
+  avaliacoes        Avaliacao[]
+
+  @@map("atividades")
+}
+
+// Modelo Inscrição
+model Inscricao {
+  id           String   @id @default(cuid())
+  clienteId    String
+  atividadeId  String
+  status       String   @default("PENDENTE") // PENDENTE, CONFIRMADA, CANCELADA, LISTA_ESPERA
+  dataInscricao DateTime @default(now())
+  observacoes  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relacionamentos
+  cliente      Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  atividade    Atividade @relation(fields: [atividadeId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteId, atividadeId])
+  @@map("inscricoes")
+}
+
+// Modelo Avaliação
+model Avaliacao {
+  id          String    @id @default(cuid())
+  clienteId   String
+  atividadeId String
+  nota        Int       // 1 a 5
+  comentario  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relacionamentos
+  cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  atividade   Atividade @relation(fields: [atividadeId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteId, atividadeId])
+  @@map("avaliacoes")
+}
